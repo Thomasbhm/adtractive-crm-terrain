@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       token,
+      must_change_password: user.must_change_password === true,
       user: {
         id: user._id.toString(),
         email: user.email,

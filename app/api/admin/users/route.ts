@@ -30,11 +30,13 @@ export const POST = withAuth(async (req: NextRequest, user) => {
   }
 
   try {
-    const { nom, prenom, email, password } = await req.json()
+    const { nom, prenom, email, password, role: requestedRole } = await req.json()
 
     if (!nom || !prenom || !email || !password) {
       return NextResponse.json({ error: 'Tous les champs sont requis' }, { status: 400 })
     }
+
+    const role = requestedRole === 'admin' ? 'admin' : 'commercial'
 
     const { db } = await connectToDatabase()
 
@@ -49,10 +51,11 @@ export const POST = withAuth(async (req: NextRequest, user) => {
       org_id: new ObjectId(user.orgId),
       email: email.toLowerCase(),
       password: hashedPassword,
-      role: 'commercial' as const,
+      role,
       nom,
       prenom,
       is_active: true,
+      must_change_password: true,
       created_at: new Date(),
     }
 

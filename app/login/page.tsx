@@ -32,7 +32,14 @@ export default function LoginPage() {
 
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
-      router.push('/scan')
+
+      if (data.must_change_password) {
+        localStorage.setItem('must_change_password', 'true')
+        router.push('/change-password')
+      } else {
+        localStorage.removeItem('must_change_password')
+        router.push('/scan')
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur de connexion')
     } finally {

@@ -26,7 +26,7 @@ export const POST = withAuth(async (req: NextRequest, user) => {
       note: body.note || '',
       source: body.source || 'manuel',
       card_image_url: body.card_image_url || '',
-      axonaut_company_id: '',
+      axonaut_company_id: body.axonaut_company_id || '',
       axonaut_employee_id: '',
       axonaut_synced: false,
       tasks: (body.tasks || []).map((t: Record<string, unknown>) => ({

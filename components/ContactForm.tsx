@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Button from './ui/Button'
 import Badge from './ui/Badge'
 import Toast from './ui/Toast'
+import Modal from './ui/Modal'
 import TaskForm, { TaskData } from './TaskForm'
 
 interface ContactData {
@@ -28,6 +29,11 @@ interface ContactFormProps {
   onSaved?: () => void
 }
 
+interface CompanySuggestion {
+  id: number
+  name: string
+}
+
 const emptyContact: ContactData = {
   prenom: '', nom: '', societe: '', poste: '', email: '',
   telephone: '', telephone_2: '', adresse: '', site_web: '', linkedin: '',
@@ -42,13 +48,14 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 function IconInput({
-  icon, label, value, onChange, type = 'text', autoComplete, placeholder,
+  icon, label, value, onChange, type = 'text', autoComplete, placeholder, children, onFocus, onBlur,
 }: {
   icon: React.ReactNode; label: string; value: string;
   onChange: (v: string) => void; type?: string; autoComplete?: string; placeholder?: string;
+  children?: React.ReactNode; onFocus?: () => void; onBlur?: () => void;
 }) {
   return (
-    <div className="w-full">
+    <div className="w-full relative">
       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
       <div className="relative">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{icon}</span>
@@ -58,9 +65,12 @@ function IconInput({
           onChange={(e) => onChange(e.target.value)}
           autoComplete={autoComplete}
           placeholder={placeholder}
+          onFocus={onFocus}
+          onBlur={onBlur}
           className="w-full pl-10 pr-4 py-3 min-h-[48px] border-[1.5px] border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
         />
       </div>
+      {children}
     </div>
   )
 }
@@ -96,6 +106,17 @@ export default function ContactForm({ mode, contacts: initialContacts, imageUrl,
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [imageFullscreen, setImageFullscreen] = useState(false)
 
+  // Axonaut company autocomplete
+  const [selectedAxonautCompanyId, setSelectedAxonautCompanyId] = useState<number | null>(null)
+  const [companySuggestions, setCompanySuggestions] = useState<CompanySuggestion[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Popup doublon Axonaut
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false)
+  const [duplicateCompany, setDuplicateCompany] = useState<CompanySuggestion | null>(null)
+  const pendingSaveRef = useRef(false)
+
   const currentContact = contacts[activeTab]
 
   const updateField = (field: keyof ContactData, value: string) => {
@@ -104,10 +125,60 @@ export default function ContactForm({ mode, contacts: initialContacts, imageUrl,
     setContacts(updated)
   }
 
-  const handleSave = async () => {
+  const searchAxonautCompanies = useCallback(async (query: string) => {
+    if (query.length < 3) {
+      setCompanySuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/axonaut/companies?search=${encodeURIComponent(query)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setCompanySuggestions(data)
+        setShowSuggestions(data.length > 0)
+      }
+    } catch {
+      // Silently fail
+    }
+  }, [])
+
+  const handleSocieteChange = (value: string) => {
+    updateField('societe', value)
+    // Reset la sélection si l'utilisateur modifie manuellement
+    setSelectedAxonautCompanyId(null)
+
+    // Debounce la recherche
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      searchAxonautCompanies(value)
+    }, 400)
+  }
+
+  const handleSelectCompany = (suggestion: CompanySuggestion) => {
+    updateField('societe', suggestion.name)
+    setSelectedAxonautCompanyId(suggestion.id)
+    setShowSuggestions(false)
+    setCompanySuggestions([])
+  }
+
+  // Cleanup debounce
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
+
+  const doSave = async (axonautCompanyId: number | null) => {
     setSaving(true)
     try {
       const token = localStorage.getItem('token')
+
+      const savedContactIds: string[] = []
 
       for (const contact of contacts) {
         const res = await fetch('/api/contacts', {
@@ -121,6 +192,7 @@ export default function ContactForm({ mode, contacts: initialContacts, imageUrl,
             note,
             source: mode === 'scan' ? 'scan_carte' : 'manuel',
             card_image_url: imageUrl || '',
+            axonaut_company_id: axonautCompanyId ? axonautCompanyId.toString() : '',
             tasks: tasks.map((t) => ({
               description: t.description,
               type: t.type,
@@ -134,9 +206,28 @@ export default function ContactForm({ mode, contacts: initialContacts, imageUrl,
           const data = await res.json()
           throw new Error(data.error || 'Erreur lors de l\'enregistrement')
         }
+
+        const savedContact = await res.json()
+        savedContactIds.push(savedContact._id)
       }
 
-      setToast({ message: 'Contact enregistré !', type: 'success' })
+      // Sync automatique avec Axonaut pour chaque contact
+      for (const contactId of savedContactIds) {
+        try {
+          await fetch('/api/axonaut/sync', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ contactId }),
+          })
+        } catch {
+          // Non bloquant — le contact est enregistré même si la sync échoue
+        }
+      }
+
+      setToast({ message: 'Contact enregistré et synchronisé !', type: 'success' })
       setTimeout(() => {
         if (onSaved) {
           onSaved()
@@ -152,6 +243,45 @@ export default function ContactForm({ mode, contacts: initialContacts, imageUrl,
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleSave = async () => {
+    // Si pas de company Axonaut sélectionnée et société non vide → vérifier doublon
+    if (selectedAxonautCompanyId === null && currentContact.societe.trim()) {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch(
+          `/api/axonaut/companies?search=${encodeURIComponent(currentContact.societe)}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        if (res.ok) {
+          const results: CompanySuggestion[] = await res.json()
+          if (results.length > 0) {
+            // Afficher la popup de doublon
+            setDuplicateCompany(results[0])
+            setShowDuplicateModal(true)
+            return
+          }
+        }
+      } catch {
+        // Si erreur de recherche, on continue l'enregistrement normalement
+      }
+    }
+
+    doSave(selectedAxonautCompanyId)
+  }
+
+  const handleDuplicateConfirm = () => {
+    // Rattacher à la company existante
+    setSelectedAxonautCompanyId(duplicateCompany!.id)
+    setShowDuplicateModal(false)
+    doSave(duplicateCompany!.id)
+  }
+
+  const handleDuplicateReject = () => {
+    // Créer une nouvelle company lors de la sync
+    setShowDuplicateModal(false)
+    doSave(null)
   }
 
   return (
@@ -213,7 +343,41 @@ export default function ContactForm({ mode, contacts: initialContacts, imageUrl,
           <IconInput icon={PersonIcon} label="Prénom" value={currentContact.prenom} onChange={(v) => updateField('prenom', v)} autoComplete="given-name" />
           <IconInput icon={PersonIcon} label="Nom" value={currentContact.nom} onChange={(v) => updateField('nom', v)} autoComplete="family-name" />
         </div>
-        <IconInput icon={BuildingIcon} label="Société" value={currentContact.societe} onChange={(v) => updateField('societe', v)} autoComplete="organization" />
+
+        {/* Société avec autocomplétion Axonaut */}
+        <IconInput
+          icon={BuildingIcon}
+          label="Société"
+          value={currentContact.societe}
+          onChange={handleSocieteChange}
+          autoComplete="off"
+          onFocus={() => { if (companySuggestions.length > 0) setShowSuggestions(true) }}
+          onBlur={() => { setTimeout(() => setShowSuggestions(false), 200) }}
+        >
+          {/* Dropdown suggestions */}
+          {showSuggestions && companySuggestions.length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-10 overflow-hidden">
+              {companySuggestions.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => handleSelectCompany(s)}
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex items-center gap-2"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1B2B6B" strokeWidth="1.5">
+                    <path d="M3 21h18M9 8h1M9 12h1M9 16h1M14 8h1M14 12h1M14 16h1M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16"/>
+                  </svg>
+                  <span className="text-gray-900">{s.name}</span>
+                  <span className="text-xs text-secondary ml-auto">Axonaut</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {selectedAxonautCompanyId && (
+            <p className="text-xs text-green-600 mt-1">Entreprise Axonaut liée</p>
+          )}
+        </IconInput>
+
         <IconInput icon={BriefcaseIcon} label="Poste" value={currentContact.poste} onChange={(v) => updateField('poste', v)} autoComplete="organization-title" />
       </div>
 
@@ -304,6 +468,33 @@ export default function ContactForm({ mode, contacts: initialContacts, imageUrl,
       </Button>
 
       <TaskForm isOpen={showTaskForm} onClose={() => setShowTaskForm(false)} onAdd={(task) => setTasks([...tasks, task])} />
+
+      {/* Modal doublon Axonaut */}
+      <Modal
+        isOpen={showDuplicateModal}
+        onClose={() => setShowDuplicateModal(false)}
+        title="Entreprise déjà existante dans Axonaut"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-secondary">
+            Nous avons trouvé une entreprise du même nom dans votre CRM Axonaut :
+          </p>
+          <div className="bg-accent/10 rounded-xl p-4">
+            <p className="font-semibold text-primary">{duplicateCompany?.name}</p>
+          </div>
+          <p className="text-sm text-secondary">
+            Voulez-vous rattacher ce contact à cette entreprise ?
+          </p>
+          <div className="flex gap-3 mt-2">
+            <Button variant="outline" fullWidth onClick={handleDuplicateReject}>
+              Non, créer une nouvelle
+            </Button>
+            <Button variant="primary" fullWidth onClick={handleDuplicateConfirm}>
+              Oui, rattacher
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

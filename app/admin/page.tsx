@@ -48,7 +48,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserData[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [showCreateUser, setShowCreateUser] = useState(false)
-  const [newUser, setNewUser] = useState({ nom: '', prenom: '', email: '', password: '' })
+  const [newUser, setNewUser] = useState({ nom: '', prenom: '', email: '', password: '', role: 'commercial' as 'admin' | 'commercial' })
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [savingSettings, setSavingSettings] = useState(false)
 
@@ -144,7 +144,7 @@ export default function AdminPage() {
 
       setToast({ message: 'Compte créé !', type: 'success' })
       setShowCreateUser(false)
-      setNewUser({ nom: '', prenom: '', email: '', password: '' })
+      setNewUser({ nom: '', prenom: '', email: '', password: '', role: 'commercial' })
       fetchUsers()
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : 'Erreur', type: 'error' })
@@ -214,7 +214,9 @@ export default function AdminPage() {
                   {showAxonaut ? EyeOffIcon : EyeIcon}
                 </button>
               </div>
-              <p className="text-xs text-secondary mt-1">Intégration Axonaut disponible en v0.2</p>
+              {hasAxonautKey && !axonautKey && (
+                <p className="text-xs text-green-600 mt-1">Clé configurée</p>
+              )}
             </div>
 
             <Button variant="primary" className="shadow-btn" onClick={saveSettings} disabled={savingSettings || (!openaiKey && !axonautKey)}>
@@ -288,12 +290,42 @@ export default function AdminPage() {
       </div>
 
       {/* Create User Modal */}
-      <Modal isOpen={showCreateUser} onClose={() => setShowCreateUser(false)} title="Créer un compte commercial">
+      <Modal isOpen={showCreateUser} onClose={() => setShowCreateUser(false)} title="Créer un compte">
         <div className="flex flex-col gap-3">
           <Input label="Prénom" value={newUser.prenom} onChange={(e) => setNewUser({ ...newUser, prenom: e.target.value })} />
           <Input label="Nom" value={newUser.nom} onChange={(e) => setNewUser({ ...newUser, nom: e.target.value })} />
           <Input label="Email" type="email" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} />
-          <Input label="Mot de passe temporaire" type="text" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} />
+          <div>
+            <Input label="Mot de passe temporaire" type="text" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} />
+            <p className="text-xs text-secondary mt-1">L'utilisateur devra changer son mot de passe lors de sa première connexion.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Rôle</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setNewUser({ ...newUser, role: 'commercial' })}
+                className={`flex-1 px-4 py-3 min-h-[48px] rounded-xl text-sm font-medium border-[1.5px] transition-all ${
+                  newUser.role === 'commercial'
+                    ? 'border-primary bg-primary text-white'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                Commercial
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewUser({ ...newUser, role: 'admin' })}
+                className={`flex-1 px-4 py-3 min-h-[48px] rounded-xl text-sm font-medium border-[1.5px] transition-all ${
+                  newUser.role === 'admin'
+                    ? 'border-primary bg-primary text-white'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                Admin
+              </button>
+            </div>
+          </div>
           <div className="flex gap-3 mt-2">
             <Button variant="outline" fullWidth onClick={() => setShowCreateUser(false)}>Annuler</Button>
             <Button variant="primary" fullWidth onClick={createUser} disabled={!newUser.email || !newUser.password}>Créer</Button>

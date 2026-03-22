@@ -33,6 +33,7 @@ interface ContactDetail {
   source: string
   card_image_url: string
   axonaut_synced: boolean
+  synced_at?: string
   tasks: Task[]
   scanned_at: string
   scanned_by_name: string
@@ -51,6 +52,8 @@ export default function ContactDetailPage() {
   const [showTaskForm, setShowTaskForm] = useState(false)
   const [imageFullscreen, setImageFullscreen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [imageError, setImageError] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
@@ -211,13 +214,18 @@ export default function ContactDetailPage() {
         </div>
 
         {/* Card image - always visible */}
-        {contact.card_image_url ? (
+        {contact.card_image_url && !imageError ? (
           <>
             <div
               className="w-full max-h-[200px] rounded-2xl overflow-hidden border-[1.5px] border-gray-200 mb-6 cursor-pointer shadow-card"
               onClick={() => setImageFullscreen(true)}
             >
-              <img src={contact.card_image_url} alt="Carte de visite" className="w-full h-full object-contain bg-gray-50" />
+              <img
+                src={contact.card_image_url}
+                alt="Carte de visite"
+                className="w-full h-full object-contain bg-gray-50"
+                onError={() => setImageError(true)}
+              />
             </div>
             {imageFullscreen && (
               <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setImageFullscreen(false)}>
@@ -233,7 +241,7 @@ export default function ContactDetailPage() {
                 <circle cx="8.5" cy="8.5" r="1.5" />
                 <path d="M21 15l-5-5L5 21" />
               </svg>
-              <p className="text-sm">Aucune image disponible</p>
+              <p className="text-sm">{imageError ? 'Image indisponible' : 'Aucune image disponible'}</p>
             </div>
           </div>
         )}
@@ -307,12 +315,75 @@ export default function ContactDetailPage() {
             {saving ? 'Sauvegarde...' : 'Sauvegarder'}
           </Button>
 
-          {/* Axonaut button - disabled v0.1 */}
+          {/* Axonaut sync button */}
           <div className="relative mt-2">
-            <Button variant="outline" size="md" fullWidth disabled className="opacity-50">
-              Synchroniser avec Axonaut
-            </Button>
-            <p className="text-xs text-center text-secondary mt-1">Disponible en v0.2</p>
+            {contact.axonaut_synced ? (
+              <>
+                <button
+                  disabled
+                  className="w-full px-6 py-3 min-h-[48px] bg-green-600 text-white font-semibold rounded-full flex items-center justify-center gap-2 opacity-90 cursor-default"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                  Synchronisé
+                </button>
+                {contact.synced_at && (
+                  <p className="text-xs text-center text-secondary mt-1">
+                    Synchronisé le {new Date(contact.synced_at).toLocaleDateString('fr-FR')} à {new Date(contact.synced_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                )}
+              </>
+            ) : (
+              <button
+                onClick={async () => {
+                  setSyncing(true)
+                  try {
+                    const token = localStorage.getItem('token')
+                    const res = await fetch('/api/axonaut/sync', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({ contactId: id }),
+                    })
+                    const data = await res.json()
+                    if (!res.ok) throw new Error(data.error || 'Erreur de synchronisation')
+                    setContact({
+                      ...contact,
+                      axonaut_synced: true,
+                      synced_at: new Date().toISOString(),
+                    })
+                    setToast({ message: 'Contact synchronisé avec Axonaut !', type: 'success' })
+                  } catch (err) {
+                    setToast({
+                      message: err instanceof Error ? err.message : 'Erreur de synchronisation',
+                      type: 'error',
+                    })
+                  } finally {
+                    setSyncing(false)
+                  }
+                }}
+                disabled={syncing}
+                className="w-full px-6 py-3 min-h-[48px] bg-primary text-white font-semibold rounded-full flex items-center justify-center gap-2 hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                {syncing ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Synchronisation en cours...
+                  </>
+                ) : (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M23 4v6h-6M1 20v-6h6" />
+                      <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+                    </svg>
+                    Synchroniser avec Axonaut
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Delete button */}
@@ -339,18 +410,10 @@ export default function ContactDetailPage() {
           <div className="absolute inset-0 bg-black/40" />
           <div className="relative bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-primary mb-2">Supprimer ce contact ?</h3>
-            <p className="text-sm text-secondary mb-6">
+            <p className="text-sm text-secondary mb-4">
               Cette action est irréversible. Le contact <strong>{contact.prenom} {contact.nom}</strong> sera définitivement supprimé.
             </p>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                size="md"
-                fullWidth
-                onClick={() => setShowDeleteConfirm(false)}
-              >
-                Annuler
-              </Button>
+            <div className="flex flex-col gap-3">
               <button
                 onClick={async () => {
                   setDeleting(true)
@@ -370,10 +433,43 @@ export default function ContactDetailPage() {
                   }
                 }}
                 disabled={deleting}
-                className="flex-1 py-3 min-h-[48px] bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
+                className="w-full px-6 py-3 min-h-[48px] bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition-colors disabled:opacity-50"
               >
-                {deleting ? 'Suppression...' : 'Supprimer'}
+                {deleting ? 'Suppression...' : 'Supprimer uniquement de l\'application'}
               </button>
+              {contact.axonaut_synced && (
+                <button
+                  onClick={async () => {
+                    setDeleting(true)
+                    try {
+                      const token = localStorage.getItem('token')
+                      const res = await fetch(`/api/contacts/${id}?deleteFromAxonaut=true`, {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                      })
+                      if (!res.ok) throw new Error('Erreur')
+                      router.push('/contacts')
+                    } catch {
+                      setShowDeleteConfirm(false)
+                      setToast({ message: 'Erreur lors de la suppression', type: 'error' })
+                    } finally {
+                      setDeleting(false)
+                    }
+                  }}
+                  disabled={deleting}
+                  className="w-full px-6 py-3 min-h-[48px] bg-red-800 text-white font-semibold rounded-full hover:bg-red-900 transition-colors disabled:opacity-50"
+                >
+                  {deleting ? 'Suppression...' : 'Supprimer de l\'application et d\'Axonaut'}
+                </button>
+              )}
+              <Button
+                variant="outline"
+                size="md"
+                fullWidth
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Annuler
+              </Button>
             </div>
           </div>
         </div>

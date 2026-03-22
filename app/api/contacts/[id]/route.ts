@@ -79,7 +79,7 @@ export const PUT = withAuth(async (req: NextRequest, user, context) => {
   }
 })
 
-export const DELETE = withAuth(async (_req: NextRequest, user, context) => {
+export const DELETE = withAuth(async (req: NextRequest, user, context) => {
   try {
     const id = context?.params?.id
     if (!id || !ObjectId.isValid(id)) {
@@ -87,14 +87,37 @@ export const DELETE = withAuth(async (_req: NextRequest, user, context) => {
     }
 
     const { db } = await connectToDatabase()
-    const result = await db.collection('contacts').deleteOne({
+
+    const { searchParams } = new URL(req.url)
+    const deleteFromAxonaut = searchParams.get('deleteFromAxonaut') === 'true'
+
+    // Récupérer le contact avant suppression pour avoir l'ID Axonaut
+    const contact = await db.collection('contacts').findOne({
       _id: new ObjectId(id),
       org_id: new ObjectId(user.orgId),
     })
 
-    if (result.deletedCount === 0) {
+    if (!contact) {
       return NextResponse.json({ error: 'Contact non trouvé' }, { status: 404 })
     }
+
+    // Supprimer de Axonaut si demandé
+    if (deleteFromAxonaut && contact.axonaut_employee_id) {
+      try {
+        const org = await db.collection('organizations').findOne({ _id: new ObjectId(user.orgId) })
+        if (org?.axonaut_api_key) {
+          const { decrypt } = await import('@/lib/crypto')
+          const { deleteEmployee } = await import('@/lib/axonaut')
+          const apiKey = decrypt(org.axonaut_api_key)
+          await deleteEmployee(Number(contact.axonaut_employee_id), apiKey)
+        }
+      } catch (err) {
+        console.error('Axonaut delete error:', err)
+        // Non bloquant — on supprime quand même localement
+      }
+    }
+
+    await db.collection('contacts').deleteOne({ _id: new ObjectId(id) })
 
     return NextResponse.json({ success: true })
   } catch (err) {

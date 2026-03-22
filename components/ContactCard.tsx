@@ -46,7 +46,11 @@ export default function ContactCard({ contact }: ContactCardProps) {
           <Badge variant={contact.source === 'scan_carte' ? 'accent' : 'primary'}>
             {contact.source === 'scan_carte' ? 'Scan' : 'Manuel'}
           </Badge>
-          {!contact.axonaut_synced && <Badge variant="orange">Axonaut non sync</Badge>}
+          {contact.axonaut_synced ? (
+            <Badge variant="green">Axonaut ✓</Badge>
+          ) : (
+            <Badge variant="orange">Non synchronisé</Badge>
+          )}
           <span className="text-xs text-gray-400">
             {new Date(contact.scanned_at).toLocaleDateString('fr-FR')}
           </span>

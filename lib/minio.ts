@@ -9,24 +9,34 @@ export const minioClient = new Minio.Client({
 
 const BUCKET = process.env.MINIO_BUCKET || 'crm-terrain'
 
+const publicReadPolicy = JSON.stringify({
+  Version: '2012-10-17',
+  Statement: [
+    {
+      Effect: 'Allow',
+      Principal: { AWS: ['*'] },
+      Action: ['s3:GetObject'],
+      Resource: [`arn:aws:s3:::${BUCKET}/*`],
+    },
+  ],
+})
+
+let policyApplied = false
+
 export async function ensureBucketExists() {
   const exists = await minioClient.bucketExists(BUCKET)
   if (!exists) {
     await minioClient.makeBucket(BUCKET)
-    await minioClient.setBucketPolicy(
-      BUCKET,
-      JSON.stringify({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Principal: { AWS: ['*'] },
-            Action: ['s3:GetObject'],
-            Resource: [`arn:aws:s3:::${BUCKET}/*`],
-          },
-        ],
-      })
-    )
+  }
+
+  // Appliquer la policy publique en lecture (une fois par démarrage)
+  if (!policyApplied) {
+    try {
+      await minioClient.setBucketPolicy(BUCKET, publicReadPolicy)
+      policyApplied = true
+    } catch (err) {
+      console.error('Failed to set bucket policy:', err)
+    }
   }
 }
 

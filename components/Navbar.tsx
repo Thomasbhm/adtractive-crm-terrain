@@ -115,7 +115,7 @@ export default function Navbar({ prenom, nom, role }: NavbarProps) {
               )}
             </div>
 
-            {/* Logout */}
+            {/* Logout + version */}
             <div className="border-t border-gray-100 p-4">
               <button
                 onClick={handleLogout}
@@ -126,6 +126,7 @@ export default function Navbar({ prenom, nom, role }: NavbarProps) {
                 </svg>
                 <span className="font-medium">Se déconnecter</span>
               </button>
+              <p className="text-[11px] text-gray-400 text-center mt-3">v0.2.0</p>
             </div>
           </div>
         </div>
