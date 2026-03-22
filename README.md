@@ -6,9 +6,9 @@ CRM terrain mobile-first pour les commerciaux d'ADtractive Media. Permet de scan
 
 | Version | Fonctionnalités |
 |---------|----------------|
-| **v0.1** (actuelle) | Scan carte + OCR + saisie manuelle + formulaire + stockage MongoDB + interface mobile |
+| v0.1 | Scan carte + OCR + saisie manuelle + formulaire + stockage MongoDB + interface mobile |
 | v0.2 | Intégration API Axonaut |
-| v0.3 | Notes vocales + transcription |
+| **v0.3** (actuelle) | Notes vocales + transcription (Mistral Voxtral) |
 | v0.4 | Dashboard admin + gestion avancée des commerciaux |
 
 ## Prérequis
@@ -44,6 +44,7 @@ cp .env.example .env.local
 | `OPENAI_API_KEY` | Clé API OpenAI |
 | `JWT_SECRET` | Secret pour signer les JWT (chaîne longue aléatoire) |
 | `AES_SECRET` | Clé AES-256 (exactement 32 caractères) |
+| `MISTRAL_API_KEY` | Clé API Mistral AI pour la transcription vocale (https://console.mistral.ai) |
 
 ## Seed (données initiales)
 
@@ -78,10 +79,11 @@ Aucune configuration spéciale requise — le projet est compatible Vercel nativ
 - **Base de données** : MongoDB
 - **Stockage images** : MinIO
 - **OCR** : OpenAI GPT-4o mini Vision
+- **Transcription vocale** : Mistral AI Voxtral Mini Transcribe V2
 - **Auth** : JWT (bcrypt)
 - **Styling** : Tailwind CSS
 - **PWA** : manifest.json + meta tags
 
 ## Version
 
-v0.1.0
+v0.3.0

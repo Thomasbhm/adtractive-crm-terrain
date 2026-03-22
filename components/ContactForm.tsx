@@ -7,6 +7,7 @@ import Badge from './ui/Badge'
 import Toast from './ui/Toast'
 import Modal from './ui/Modal'
 import TaskForm, { TaskData } from './TaskForm'
+import VoiceNote from './VoiceNote'
 
 interface ContactData {
   prenom: string
@@ -447,10 +448,15 @@ export default function ContactForm({ mode, contacts: initialContacts, imageUrl,
           )}
         </div>
 
-        {/* Voice notes placeholder */}
-        <div className="opacity-50">
-          <div className="p-3 bg-gray-50 rounded-xl border border-dashed border-gray-300 text-center">
-            <p className="text-sm text-gray-500">Notes vocales — Disponible en v0.3</p>
+        {/* Voice note */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-3">Note vocale</label>
+          <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+            <VoiceNote
+              onTextReady={(text) => {
+                setNote((prev) => (prev ? `${prev}\n${text}` : text))
+              }}
+            />
           </div>
         </div>
       </div>

@@ -21,7 +21,8 @@ function formatDateDDMMYYYY(date: Date): string {
 
 export const POST = withAuth(async (req: NextRequest, user) => {
   try {
-    const { contactId } = await req.json()
+    const body = await req.json()
+    const { contactId, noteOnly, noteContent } = body
 
     if (!contactId || !ObjectId.isValid(contactId)) {
       return NextResponse.json({ error: 'ID contact invalide' }, { status: 400 })
@@ -59,6 +60,27 @@ export const POST = withAuth(async (req: NextRequest, user) => {
         { error: 'Clé API Axonaut invalide. Veuillez la reconfigurer.' },
         { status: 400 }
       )
+    }
+
+    // Mode noteOnly — sync uniquement une note vers Axonaut
+    if (noteOnly && contact.axonaut_company_id) {
+      try {
+        await createNote(
+          {
+            company_id: Number(contact.axonaut_company_id),
+            nature: 6,
+            date: new Date().toISOString(),
+            content: noteContent || contact.note || '',
+            is_done: true,
+          },
+          apiKey
+        )
+        return NextResponse.json({ success: true })
+      } catch (err) {
+        console.error('Axonaut note sync error:', err)
+        const message = err instanceof Error ? err.message : 'Erreur lors de la synchronisation de la note'
+        return NextResponse.json({ error: message }, { status: 500 })
+      }
     }
 
     const scannedDate = formatDateDDMMYYYY(new Date(contact.scanned_at))

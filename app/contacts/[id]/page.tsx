@@ -8,6 +8,8 @@ import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Toast from '@/components/ui/Toast'
 import TaskForm, { TaskData } from '@/components/TaskForm'
+import VoiceNote from '@/components/VoiceNote'
+import Modal from '@/components/ui/Modal'
 
 interface Task {
   _id: string
@@ -55,6 +57,8 @@ export default function ContactDetailPage() {
   const [imageError, setImageError] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showVoiceModal, setShowVoiceModal] = useState(false)
+  const [syncToast, setSyncToast] = useState(false)
 
   useEffect(() => {
     const stored = localStorage.getItem('user')
@@ -140,6 +144,56 @@ export default function ContactDetailPage() {
       }
     } catch (err) {
       console.error('Toggle task error:', err)
+    }
+  }
+
+  const handleVoiceText = async (text: string) => {
+    if (!contact) return
+    const newNote = contact.note ? `${contact.note}\n${text}` : text
+    setContact({ ...contact, note: newNote })
+    setShowVoiceModal(false)
+
+    // Sauvegarder automatiquement
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/contacts/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ note: newNote }),
+      })
+      if (!res.ok) throw new Error()
+
+      // Si déjà synchronisé avec Axonaut, proposer de sync la note
+      if (contact.axonaut_synced) {
+        setSyncToast(true)
+      } else {
+        setToast({ message: 'Note ajoutée !', type: 'success' })
+      }
+    } catch {
+      setToast({ message: 'Erreur lors de la sauvegarde de la note', type: 'error' })
+    }
+  }
+
+  const syncNoteToAxonaut = async () => {
+    if (!contact) return
+    setSyncToast(false)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/axonaut/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ contactId: id, noteOnly: true, noteContent: contact.note }),
+      })
+      if (!res.ok) throw new Error()
+      setToast({ message: 'Note synchronisée avec Axonaut !', type: 'success' })
+    } catch {
+      setToast({ message: 'Erreur lors de la synchronisation', type: 'error' })
     }
   }
 
@@ -269,6 +323,18 @@ export default function ContactDetailPage() {
               placeholder="Notes..."
               className="w-full px-4 py-3 min-h-[100px] border-[1.5px] border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-y"
             />
+            <button
+              onClick={() => setShowVoiceModal(true)}
+              className="mt-2 flex items-center gap-2 px-4 py-2.5 min-h-[44px] border-[1.5px] border-primary text-primary font-medium rounded-full text-sm hover:bg-primary/5 transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="8" y1="23" x2="16" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              Ajouter une note vocale
+            </button>
           </div>
 
           {/* Tasks */}
@@ -476,6 +542,43 @@ export default function ContactDetailPage() {
       )}
 
       <TaskForm isOpen={showTaskForm} onClose={() => setShowTaskForm(false)} onAdd={addTask} />
+
+      {/* Voice note modal */}
+      <Modal
+        isOpen={showVoiceModal}
+        onClose={() => setShowVoiceModal(false)}
+        title="Note vocale"
+      >
+        <div className="py-4">
+          <VoiceNote onTextReady={handleVoiceText} />
+        </div>
+      </Modal>
+
+      {/* Sync toast for voice note */}
+      {syncToast && (
+        <div className="fixed bottom-6 left-4 right-4 z-50 flex justify-center">
+          <div className="bg-primary text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 max-w-sm w-full">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M20 6L9 17l-5-5" />
+            </svg>
+            <span className="text-sm font-medium flex-1">Note ajoutée</span>
+            <button
+              onClick={syncNoteToAxonaut}
+              className="text-sm font-semibold underline underline-offset-2 hover:opacity-80 whitespace-nowrap"
+            >
+              Synchroniser avec Axonaut
+            </button>
+            <button
+              onClick={() => setSyncToast(false)}
+              className="ml-1 opacity-70 hover:opacity-100"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
