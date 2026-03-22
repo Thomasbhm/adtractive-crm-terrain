@@ -10,6 +10,7 @@ import {
   updateEmployee,
   createNote,
   createTask,
+  toAxonautRFC3339,
 } from '@/lib/axonaut'
 
 function formatDateDDMMYYYY(date: Date): string {
@@ -69,7 +70,7 @@ export const POST = withAuth(async (req: NextRequest, user) => {
           {
             company_id: Number(contact.axonaut_company_id),
             nature: 6,
-            date: new Date().toISOString(),
+            date: toAxonautRFC3339(new Date()),
             content: noteContent || contact.note || '',
             is_done: true,
           },
@@ -143,7 +144,7 @@ export const POST = withAuth(async (req: NextRequest, user) => {
           {
             company_id: companyId,
             nature: 6,
-            date: new Date().toISOString(),
+            date: toAxonautRFC3339(new Date()),
             content: contact.note,
             is_done: true,
           },
