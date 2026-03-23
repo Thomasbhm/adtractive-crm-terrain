@@ -53,7 +53,7 @@ export const PUT = withAuth(async (req: NextRequest, user, context) => {
     // Handle tasks update
     if (body.tasks) {
       updateFields.tasks = body.tasks.map((t: Record<string, unknown>) => ({
-        _id: t._id ? new ObjectId(t._id as string) : new ObjectId(),
+        _id: t._id && ObjectId.isValid(t._id as string) ? new ObjectId(t._id as string) : new ObjectId(),
         description: t.description || '',
         due_date: t.due_date ? new Date(t.due_date as string) : new Date(),
         type: t.type || 'autre',
@@ -104,13 +104,9 @@ export const DELETE = withAuth(async (req: NextRequest, user, context) => {
     // Supprimer de Axonaut si demandé
     if (deleteFromAxonaut && contact.axonaut_employee_id) {
       try {
-        const org = await db.collection('organizations').findOne({ _id: new ObjectId(user.orgId) })
-        if (org?.axonaut_api_key) {
-          const { decrypt } = await import('@/lib/crypto')
-          const { deleteEmployee } = await import('@/lib/axonaut')
-          const apiKey = decrypt(org.axonaut_api_key)
-          await deleteEmployee(Number(contact.axonaut_employee_id), apiKey)
-        }
+        const { getUserAxonautKey, deleteEmployee } = await import('@/lib/axonaut')
+        const apiKey = await getUserAxonautKey(user.userId)
+        await deleteEmployee(Number(contact.axonaut_employee_id), apiKey)
       } catch (err) {
         console.error('Axonaut delete error:', err)
         // Non bloquant — on supprime quand même localement

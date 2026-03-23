@@ -1,3 +1,7 @@
+import { ObjectId } from 'mongodb'
+import { connectToDatabase } from './mongodb'
+import { decrypt } from './crypto'
+
 const BASE_URL = 'https://axonaut.com/api/v2'
 
 interface AxonautCompany {
@@ -52,6 +56,18 @@ interface TaskPayload {
   company_id: number
   priority: string
   end_date: string
+}
+
+// Récupère la clé API Axonaut de l'utilisateur connecté (déchiffrée)
+export async function getUserAxonautKey(userId: string): Promise<string> {
+  const { db } = await connectToDatabase()
+  const user = await db.collection('users').findOne({ _id: new ObjectId(userId) })
+
+  if (!user?.axonaut_api_key) {
+    throw new Error('Clé API Axonaut non configurée. Configurez-la dans votre profil.')
+  }
+
+  return decrypt(user.axonaut_api_key)
 }
 
 // Génère une date RFC3339 compatible Axonaut (sans millisecondes, avec offset timezone)
@@ -169,4 +185,60 @@ export async function createTask(
     method: 'POST',
     body: data,
   })
+}
+
+export async function searchEmployees(
+  query: string,
+  apiKey: string
+): Promise<AxonautEmployee[]> {
+  const encoded = encodeURIComponent(query)
+  const results = await axonautFetch<AxonautEmployee[]>(
+    `/employees?search=${encoded}`,
+    apiKey
+  )
+  return results.slice(0, 5)
+}
+
+// Sync uniquement les mises à jour (note/tâches) pour un contact déjà synchronisé
+export async function syncUpdatesToAxonaut(
+  companyId: number,
+  apiKey: string,
+  updates: {
+    newNote?: string
+    newTasks?: Array<{ description: string; due_date?: string | Date }>
+  }
+): Promise<void> {
+  // Ajouter la note si présente
+  if (updates.newNote) {
+    await createNote(
+      {
+        company_id: companyId,
+        nature: 6,
+        date: toAxonautRFC3339(new Date()),
+        content: updates.newNote,
+        is_done: true,
+      },
+      apiKey
+    )
+  }
+
+  // Ajouter les tâches si présentes
+  if (updates.newTasks?.length) {
+    for (const task of updates.newTasks) {
+      const dueDate = task.due_date ? new Date(task.due_date) : new Date()
+      const d = dueDate.getDate().toString().padStart(2, '0')
+      const m = (dueDate.getMonth() + 1).toString().padStart(2, '0')
+      const y = dueDate.getFullYear()
+
+      await createTask(
+        {
+          title: task.description,
+          company_id: companyId,
+          priority: 'normale',
+          end_date: `${d}/${m}/${y}`,
+        },
+        apiKey
+      )
+    }
+  }
 }

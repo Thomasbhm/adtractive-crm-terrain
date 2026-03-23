@@ -10,12 +10,11 @@ export const PUT = withAuth(async (req: NextRequest, user) => {
   }
 
   try {
-    const { openai_api_key, axonaut_api_key } = await req.json()
+    const { openai_api_key } = await req.json()
     const { db } = await connectToDatabase()
 
     const update: Record<string, string> = {}
     if (openai_api_key) update.openai_api_key = encrypt(openai_api_key)
-    if (axonaut_api_key) update.axonaut_api_key = encrypt(axonaut_api_key)
 
     await db.collection('organizations').updateOne(
       { _id: new ObjectId(user.orgId) },

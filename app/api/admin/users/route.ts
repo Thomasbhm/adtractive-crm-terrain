@@ -77,3 +77,39 @@ export const POST = withAuth(async (req: NextRequest, user) => {
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 })
+
+export const DELETE = withAuth(async (req: NextRequest, user) => {
+  if (user.role !== 'admin') {
+    return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+  }
+
+  try {
+    const { searchParams } = new URL(req.url)
+    const userId = searchParams.get('id')
+
+    if (!userId || !ObjectId.isValid(userId)) {
+      return NextResponse.json({ error: 'ID utilisateur invalide' }, { status: 400 })
+    }
+
+    // Empêcher un admin de se supprimer lui-même
+    if (userId === user.userId) {
+      return NextResponse.json({ error: 'Vous ne pouvez pas supprimer votre propre compte' }, { status: 400 })
+    }
+
+    const { db } = await connectToDatabase()
+
+    const result = await db.collection('users').deleteOne({
+      _id: new ObjectId(userId),
+      org_id: new ObjectId(user.orgId),
+    })
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error('Delete user error:', err)
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+  }
+})

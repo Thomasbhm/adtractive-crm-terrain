@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ObjectId } from 'mongodb'
 import { withAuth } from '@/lib/auth'
-import { connectToDatabase } from '@/lib/mongodb'
-import { decrypt } from '@/lib/crypto'
-import { searchCompany } from '@/lib/axonaut'
+import { getUserAxonautKey, searchCompany } from '@/lib/axonaut'
 
 export const GET = withAuth(async (req: NextRequest, user) => {
   try {
@@ -14,18 +11,9 @@ export const GET = withAuth(async (req: NextRequest, user) => {
       return NextResponse.json([])
     }
 
-    const { db } = await connectToDatabase()
-    const org = await db
-      .collection('organizations')
-      .findOne({ _id: new ObjectId(user.orgId) })
-
-    if (!org?.axonaut_api_key) {
-      return NextResponse.json([])
-    }
-
     let apiKey: string
     try {
-      apiKey = decrypt(org.axonaut_api_key)
+      apiKey = await getUserAxonautKey(user.userId)
     } catch {
       return NextResponse.json([])
     }

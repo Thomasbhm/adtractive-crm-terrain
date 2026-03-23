@@ -126,7 +126,7 @@ export default function Navbar({ prenom, nom, role }: NavbarProps) {
                 </svg>
                 <span className="font-medium">Se déconnecter</span>
               </button>
-              <p className="text-[11px] text-gray-400 text-center mt-3">v0.3.0</p>
+              <p className="text-[11px] text-gray-400 text-center mt-3">v0.4.0</p>
             </div>
           </div>
         </div>

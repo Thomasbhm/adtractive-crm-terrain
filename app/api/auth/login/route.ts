@@ -38,12 +38,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       token,
       must_change_password: user.must_change_password === true,
+      axonaut_api_key_set: user.axonaut_api_key_set === true,
       user: {
         id: user._id.toString(),
         email: user.email,
         role: user.role,
         nom: user.nom,
         prenom: user.prenom,
+        axonaut_api_key_set: user.axonaut_api_key_set === true,
       },
     })
   } catch (err) {

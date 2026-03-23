@@ -38,13 +38,10 @@ const EyeOffIcon = (
 
 export default function AdminPage() {
   const router = useRouter()
-  const [user, setUser] = useState<{ prenom: string; nom: string; role: string } | null>(null)
+  const [user, setUser] = useState<{ prenom: string; nom: string; role: string; email?: string } | null>(null)
   const [openaiKey, setOpenaiKey] = useState('')
-  const [axonautKey, setAxonautKey] = useState('')
   const [hasOpenaiKey, setHasOpenaiKey] = useState(false)
-  const [hasAxonautKey, setHasAxonautKey] = useState(false)
   const [showOpenai, setShowOpenai] = useState(false)
-  const [showAxonaut, setShowAxonaut] = useState(false)
   const [users, setUsers] = useState<UserData[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [showCreateUser, setShowCreateUser] = useState(false)
@@ -76,7 +73,6 @@ export default function AdminPage() {
         const data = await res.json()
         // We'll use a dedicated endpoint or check if keys exist
         if (data.org_has_openai_key) setHasOpenaiKey(true)
-        if (data.org_has_axonaut_key) setHasAxonautKey(true)
       }
     } catch {
       // ignore
@@ -106,7 +102,6 @@ export default function AdminPage() {
     try {
       const body: Record<string, string> = {}
       if (openaiKey) body.openai_api_key = openaiKey
-      if (axonautKey) body.axonaut_api_key = axonautKey
 
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
@@ -117,11 +112,8 @@ export default function AdminPage() {
       if (!res.ok) throw new Error()
       setToast({ message: 'Paramètres sauvegardés !', type: 'success' })
       if (openaiKey) setHasOpenaiKey(true)
-      if (axonautKey) setHasAxonautKey(true)
       setOpenaiKey('')
-      setAxonautKey('')
       setShowOpenai(false)
-      setShowAxonaut(false)
     } catch {
       setToast({ message: 'Erreur lors de la sauvegarde', type: 'error' })
     } finally {
@@ -195,31 +187,11 @@ export default function AdminPage() {
               )}
             </div>
 
-            {/* Axonaut Key */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Axonaut API Key</label>
-              <div className="relative">
-                <input
-                  type={showAxonaut ? 'text' : 'password'}
-                  value={axonautKey}
-                  onChange={(e) => setAxonautKey(e.target.value)}
-                  placeholder={hasAxonautKey ? '••••••••••••••••' : 'Clé API Axonaut'}
-                  className="w-full px-4 pr-12 py-3 min-h-[48px] border-[1.5px] border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowAxonaut(!showAxonaut)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                >
-                  {showAxonaut ? EyeOffIcon : EyeIcon}
-                </button>
-              </div>
-              {hasAxonautKey && !axonautKey && (
-                <p className="text-xs text-green-600 mt-1">Clé configurée</p>
-              )}
-            </div>
+            <p className="text-xs text-secondary">
+              La clé API Axonaut est désormais configurée individuellement par chaque utilisateur lors de l'onboarding.
+            </p>
 
-            <Button variant="primary" className="shadow-btn" onClick={saveSettings} disabled={savingSettings || (!openaiKey && !axonautKey)}>
+            <Button variant="primary" className="shadow-btn" onClick={saveSettings} disabled={savingSettings || !openaiKey}>
               {savingSettings ? 'Sauvegarde...' : 'Sauvegarder'}
             </Button>
           </div>
@@ -246,6 +218,34 @@ export default function AdminPage() {
                     {u.role}
                   </span>
                   <span className={`w-2 h-2 rounded-full ${u.is_active ? 'bg-green-500' : 'bg-red-500'}`} />
+                  {u.email !== user?.email && (
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Supprimer le compte de ${u.prenom} ${u.nom} ?`)) return
+                        try {
+                          const res = await fetch(`/api/admin/users?id=${u._id}`, {
+                            method: 'DELETE',
+                            headers: { Authorization: `Bearer ${getToken()}` },
+                          })
+                          if (!res.ok) {
+                            const data = await res.json()
+                            throw new Error(data.error)
+                          }
+                          setToast({ message: 'Compte supprimé', type: 'success' })
+                          fetchUsers()
+                        } catch (err) {
+                          setToast({ message: err instanceof Error ? err.message : 'Erreur', type: 'error' })
+                        }
+                      }}
+                      className="min-w-[32px] min-h-[32px] flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Supprimer ce compte"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <polyline points="3,6 5,6 21,6" />
+                        <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -282,10 +282,10 @@ export default function AdminPage() {
           )}
         </section>
 
-        {/* v0.4 placeholder */}
+        {/* v0.5 placeholder */}
         <section className="bg-white rounded-2xl p-4 shadow-card border border-gray-100 border-dashed opacity-60">
           <h2 className="font-bold text-secondary mb-2">Dashboard avancé</h2>
-          <p className="text-sm text-secondary">Disponible en v0.4</p>
+          <p className="text-sm text-secondary">Disponible en v0.5</p>
         </section>
       </div>
 
