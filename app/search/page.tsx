@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
+import BottomNav from '@/components/BottomNav'
 
 interface AxonautEmployee {
   id: number
@@ -162,29 +163,38 @@ export default function SearchPage() {
                 <h2 className="text-sm font-semibold text-primary uppercase tracking-wide mb-3">Contacts</h2>
                 <div className="flex flex-col gap-2">
                   {employees.map((emp) => (
-                    <a
+                    <div
                       key={emp.id}
-                      href={`https://axonaut.com/business/employee/show/${emp.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className="bg-white rounded-xl p-4 shadow-card border border-gray-100 flex items-center justify-between hover:border-primary/30 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <button
+                        onClick={() => router.push(`/contacts/axonaut/employee/${emp.id}`)}
+                        className="flex items-center gap-3 flex-1 text-left min-w-0"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1B2B6B" strokeWidth="1.5">
                             <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
                             <circle cx="12" cy="7" r="4" />
                           </svg>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{emp.firstname} {emp.lastname}</p>
-                          {emp.email && <p className="text-xs text-secondary">{emp.email}</p>}
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 truncate">{emp.firstname} {emp.lastname}</p>
+                          {emp.email && <p className="text-xs text-secondary truncate">{emp.email}</p>}
                         </div>
-                      </div>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2">
-                        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
-                      </svg>
-                    </a>
+                      </button>
+                      <a
+                        href={`https://axonaut.com/business/employee/show/${emp.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label="Ouvrir dans Axonaut"
+                        className="ml-2 p-2 rounded-lg text-secondary hover:text-primary hover:bg-primary/5"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+                        </svg>
+                      </a>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -196,30 +206,39 @@ export default function SearchPage() {
                 <h2 className="text-sm font-semibold text-primary uppercase tracking-wide mb-3">Entreprises</h2>
                 <div className="flex flex-col gap-2">
                   {companies.map((comp) => (
-                    <a
+                    <div
                       key={comp.id}
-                      href={`https://axonaut.com/business/company/show/${comp.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className="bg-white rounded-xl p-4 shadow-card border border-gray-100 flex items-center justify-between hover:border-primary/30 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
+                      <button
+                        onClick={() => router.push(`/contacts/axonaut/company/${comp.id}`)}
+                        className="flex items-center gap-3 flex-1 text-left min-w-0"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1B2B6B" strokeWidth="1.5">
                             <path d="M3 21h18M3 7v14M21 7v14M6 11h.01M6 15h.01M6 19h.01M10 11h.01M10 15h.01M10 19h.01M14 11h.01M14 15h.01M14 19h.01M18 11h.01M18 15h.01M18 19h.01M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
                           </svg>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{comp.name}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 truncate">{comp.name}</p>
                           <p className="text-xs text-secondary">
                             {comp.is_customer ? 'Client' : comp.is_prospect ? 'Prospect' : 'Entreprise'}
                           </p>
                         </div>
-                      </div>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2">
-                        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
-                      </svg>
-                    </a>
+                      </button>
+                      <a
+                        href={`https://axonaut.com/business/company/show/${comp.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label="Ouvrir dans Axonaut"
+                        className="ml-2 p-2 rounded-lg text-secondary hover:text-primary hover:bg-primary/5"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+                        </svg>
+                      </a>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -227,6 +246,8 @@ export default function SearchPage() {
           </>
         )}
       </div>
+
+      <BottomNav prenom={user?.prenom} nom={user?.nom} role={user?.role} />
     </div>
   )
 }

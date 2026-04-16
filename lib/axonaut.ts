@@ -49,6 +49,19 @@ interface NotePayload {
   date: string
   content: string
   is_done: boolean
+  title?: string
+  duration?: number
+}
+
+export interface EventPayload {
+  company_id: number
+  nature: number
+  date: string
+  content: string
+  is_done: boolean
+  title?: string
+  duration?: number
+  employee_email?: string
 }
 
 interface TaskPayload {
@@ -103,12 +116,40 @@ async function axonautFetch<T>(
 
   if (!res.ok) {
     let errorMessage = `Axonaut API error ${res.status}`
+    let rawBody: unknown = null
     try {
-      const errorData = await res.json()
-      errorMessage = errorData.message || errorData.error || errorMessage
+      rawBody = await res.json()
     } catch {
-      // keep default message
+      try {
+        rawBody = await res.text()
+      } catch {
+        // ignore
+      }
     }
+
+    const extract = (v: unknown): string | null => {
+      if (!v) return null
+      if (typeof v === 'string') return v
+      if (typeof v === 'object') {
+        const obj = v as Record<string, unknown>
+        if (typeof obj.message === 'string') return obj.message
+        if (typeof obj.error === 'string') return obj.error
+        if (typeof obj.detail === 'string') return obj.detail
+        try {
+          return JSON.stringify(v)
+        } catch {
+          return null
+        }
+      }
+      return String(v)
+    }
+
+    const extracted = extract(rawBody)
+    if (extracted) errorMessage = `${errorMessage} — ${extracted}`
+
+    // Log pour debug côté serveur
+    console.error(`[Axonaut] ${method} ${endpoint} → ${res.status}`, rawBody)
+
     throw new Error(errorMessage)
   }
 
@@ -177,6 +218,16 @@ export async function createNote(
   })
 }
 
+export async function createEvent(
+  data: EventPayload,
+  apiKey: string
+): Promise<AxonautEvent> {
+  return axonautFetch<AxonautEvent>('/events', apiKey, {
+    method: 'POST',
+    body: data,
+  })
+}
+
 export async function createTask(
   data: TaskPayload,
   apiKey: string
@@ -197,6 +248,66 @@ export async function searchEmployees(
     apiKey
   )
   return results.slice(0, 5)
+}
+
+// ---------------------------------------------------------------------------
+// Détail entreprise — helpers pour la fiche Axonaut interne
+// ---------------------------------------------------------------------------
+
+export async function getCompany(
+  companyId: number,
+  apiKey: string
+): Promise<any> {
+  return axonautFetch<any>(`/companies/${companyId}`, apiKey)
+}
+
+export async function getEmployee(
+  employeeId: number,
+  apiKey: string
+): Promise<any> {
+  return axonautFetch<any>(`/employees/${employeeId}`, apiKey)
+}
+
+export async function getCompanyEmployees(
+  companyId: number,
+  apiKey: string
+): Promise<any[]> {
+  return axonautFetch<any[]>(`/companies/${companyId}/employees`, apiKey)
+}
+
+export async function getCompanyEvents(
+  companyId: number,
+  apiKey: string
+): Promise<any[]> {
+  return axonautFetch<any[]>(`/companies/${companyId}/events`, apiKey)
+}
+
+export async function getCompanyQuotations(
+  companyId: number,
+  apiKey: string
+): Promise<any[]> {
+  return axonautFetch<any[]>(`/companies/${companyId}/quotations`, apiKey)
+}
+
+export async function getCompanyInvoices(
+  companyId: number,
+  apiKey: string
+): Promise<any[]> {
+  return axonautFetch<any[]>(`/companies/${companyId}/invoices`, apiKey)
+}
+
+export async function getCompanyOpportunities(
+  companyId: number,
+  apiKey: string
+): Promise<any[]> {
+  return axonautFetch<any[]>(`/companies/${companyId}/opportunities`, apiKey)
+}
+
+export async function getCompanyContracts(
+  companyId: number,
+  apiKey: string
+): Promise<any[]> {
+  return axonautFetch<any[]>(`/companies/${companyId}/contracts`, apiKey)
 }
 
 // Sync uniquement les mises à jour (note/tâches) pour un contact déjà synchronisé

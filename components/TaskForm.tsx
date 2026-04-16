@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Modal from './ui/Modal'
 import Input from './ui/Input'
 import Button from './ui/Button'
@@ -21,18 +21,51 @@ export default function TaskForm({ isOpen, onClose, onAdd }: TaskFormProps) {
   const [description, setDescription] = useState('')
   const [type, setType] = useState<TaskData['type']>('rappel')
   const [dueDate, setDueDate] = useState('')
+  const [includeTime, setIncludeTime] = useState(false)
+  const [dueTime, setDueTime] = useState('')
+  const [error, setError] = useState('')
 
-  const handleSubmit = () => {
-    if (!description.trim()) return
-    onAdd({ description, type, due_date: dueDate })
+  const isMeeting = type === 'reunion'
+
+  // Pour une réunion, l'heure est obligatoire → on force l'affichage du champ heure
+  useEffect(() => {
+    if (isMeeting) setIncludeTime(true)
+  }, [isMeeting])
+
+  const reset = () => {
     setDescription('')
     setType('rappel')
     setDueDate('')
+    setIncludeTime(false)
+    setDueTime('')
+    setError('')
+  }
+
+  const handleSubmit = () => {
+    if (!description.trim()) return
+    // Validation : réunion => heure obligatoire
+    if (isMeeting && !dueTime) {
+      setError('L\'heure est obligatoire pour une réunion')
+      return
+    }
+    if (isMeeting && !dueDate) {
+      setError('La date est obligatoire pour une réunion')
+      return
+    }
+    const combined =
+      dueDate && (includeTime || isMeeting) && dueTime ? `${dueDate}T${dueTime}` : dueDate
+    onAdd({ description, type, due_date: combined })
+    reset()
+    onClose()
+  }
+
+  const handleCancel = () => {
+    reset()
     onClose()
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Ajouter une tâche">
+    <Modal isOpen={isOpen} onClose={handleCancel} title="Ajouter une tâche">
       <div className="flex flex-col gap-4">
         <Input
           label="Description"
@@ -56,15 +89,46 @@ export default function TaskForm({ isOpen, onClose, onAdd }: TaskFormProps) {
           </select>
         </div>
 
-        <Input
-          label="Date"
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-        />
+        <div className={`grid gap-3 ${includeTime || isMeeting ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <Input
+            label={`Date${isMeeting ? ' *' : ''}`}
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+          />
+          {(includeTime || isMeeting) && (
+            <Input
+              label={`Heure${isMeeting ? ' *' : ''}`}
+              type="time"
+              value={dueTime}
+              onChange={(e) => setDueTime(e.target.value)}
+            />
+          )}
+        </div>
+
+        {!isMeeting ? (
+          <label className="flex items-center gap-2 cursor-pointer select-none -mt-1">
+            <input
+              type="checkbox"
+              checked={includeTime}
+              onChange={(e) => {
+                setIncludeTime(e.target.checked)
+                if (!e.target.checked) setDueTime('')
+              }}
+              className="w-4 h-4 accent-primary rounded"
+            />
+            <span className="text-sm text-gray-700">Ajouter une heure précise</span>
+          </label>
+        ) : (
+          <p className="text-xs text-ink-muted -mt-1">
+            Date et heure obligatoires pour une réunion (remontera dans la chronologie Axonaut).
+          </p>
+        )}
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div className="flex gap-3 mt-2">
-          <Button variant="outline" fullWidth onClick={onClose}>
+          <Button variant="outline" fullWidth onClick={handleCancel}>
             Annuler
           </Button>
           <Button variant="primary" fullWidth onClick={handleSubmit} disabled={!description.trim()}>

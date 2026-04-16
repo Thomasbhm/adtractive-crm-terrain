@@ -12,6 +12,16 @@ const config: Config = {
         accent: '#F5C842',
         secondary: '#6B7280',
         page: '#F8F9FC',
+        // Palette Pipedrive-like
+        action: '#00B074',          // vert FAB
+        'action-hover': '#00955F',
+        'action-soft': '#E6F7F0',   // fond léger vert
+        'ink': '#1F2937',           // texte principal
+        'ink-soft': '#4B5563',      // texte secondaire
+        'ink-muted': '#9CA3AF',     // texte muted
+        'line': '#E5E7EB',          // bordures fines
+        'surface': '#FFFFFF',       // cartes
+        'surface-2': '#F3F4F6',     // fond tabs / sections
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
