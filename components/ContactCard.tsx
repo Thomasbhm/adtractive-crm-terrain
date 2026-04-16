@@ -12,8 +12,16 @@ interface ContactCardProps {
     societe: string
     source: 'scan_carte' | 'manuel'
     axonaut_synced: boolean
+    axonaut_company_id?: string
     scanned_at: string
   }
+}
+
+function resolveRoute(c: ContactCardProps['contact']): string {
+  if (c.axonaut_synced && c.axonaut_company_id) {
+    return `/contacts/axonaut/company/${c.axonaut_company_id}`
+  }
+  return `/contacts/local/${c._id}`
 }
 
 const colors = ['#1B2B6B', '#F5C842', '#6B7280', '#059669', '#DC2626', '#7C3AED']
@@ -32,7 +40,7 @@ export default function ContactCard({ contact }: ContactCardProps) {
   const initials = `${contact.prenom?.[0] || ''}${contact.nom?.[0] || ''}`.toUpperCase()
 
   return (
-    <Card onClick={() => router.push(`/contacts/${contact._id}`)} className="flex items-center gap-3">
+    <Card onClick={() => router.push(resolveRoute(contact))} className="flex items-center gap-3">
       <div
         className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
         style={{ backgroundColor: getInitialsColor(fullName) }}
