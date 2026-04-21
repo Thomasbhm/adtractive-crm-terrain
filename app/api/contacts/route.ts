@@ -59,14 +59,35 @@ export const GET = withAuth(async (req: NextRequest, user) => {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const skip = (page - 1) * limit
+    const q = searchParams.get('q') || ''
 
     const { db } = await connectToDatabase()
 
-    const query: Record<string, unknown> = { org_id: new ObjectId(user.orgId) }
+    const baseFilter: Record<string, unknown> = { org_id: new ObjectId(user.orgId) }
 
     // Commercial can only see their own contacts
     if (user.role === 'commercial') {
-      query.scanned_by = new ObjectId(user.userId)
+      baseFilter.scanned_by = new ObjectId(user.userId)
+    }
+
+    // Full-text search across all meaningful fields
+    let query: Record<string, unknown> = baseFilter
+    if (q.trim().length >= 2) {
+      const regex = { $regex: q.trim(), $options: 'i' }
+      query = {
+        ...baseFilter,
+        $or: [
+          { nom: regex },
+          { prenom: regex },
+          { societe: regex },
+          { email: regex },
+          { telephone: regex },
+          { telephone_2: regex },
+          { adresse: regex },
+          { note: regex },
+          { poste: regex },
+        ],
+      }
     }
 
     const [contacts, total] = await Promise.all([
