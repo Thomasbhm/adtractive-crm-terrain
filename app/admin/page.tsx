@@ -55,7 +55,7 @@ export default function AdminPage() {
       const u = JSON.parse(stored)
       setUser(u)
       if (u.role !== 'admin') {
-        router.replace('/scan')
+        router.replace('/planning')
         return
       }
     }
@@ -150,7 +150,7 @@ export default function AdminPage() {
 
       <div className="p-4 pb-24">
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => router.push('/scan')} className="min-h-[48px] min-w-[48px] flex items-center justify-center">
+          <button onClick={() => router.push('/planning')} className="min-h-[48px] min-w-[48px] flex items-center justify-center">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1B2B6B" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>

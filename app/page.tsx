@@ -9,7 +9,7 @@ export default function Home() {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (token) {
-      router.replace('/scan')
+      router.replace('/planning')
     } else {
       router.replace('/login')
     }

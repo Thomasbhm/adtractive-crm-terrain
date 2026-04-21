@@ -8,6 +8,7 @@ import Toast from './ui/Toast'
 import Modal from './ui/Modal'
 import TaskForm, { TaskData } from './TaskForm'
 import VoiceNote from './VoiceNote'
+import { formatTaskDueDate } from '@/lib/dates'
 
 interface ContactData {
   prenom: string
@@ -431,7 +432,7 @@ export default function ContactForm({ mode, contacts: initialContacts, imageUrl,
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">{task.description}</p>
                     <p className="text-xs text-gray-500">
-                      {task.type} {task.due_date && `· ${new Date(task.due_date).toLocaleDateString('fr-FR')}`}
+                      {task.type} {task.due_date && `· ${formatTaskDueDate(task.due_date)}`}
                     </p>
                   </div>
                   <button

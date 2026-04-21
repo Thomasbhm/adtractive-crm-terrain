@@ -18,7 +18,7 @@ export default function ChangePasswordPage() {
     const token = localStorage.getItem('token')
     const mustChange = localStorage.getItem('must_change_password')
     if (!token || mustChange !== 'true') {
-      router.replace('/scan')
+      router.replace('/planning')
     }
   }, [router])
 
@@ -68,7 +68,7 @@ export default function ChangePasswordPage() {
           return
         }
       }
-      router.push('/scan')
+      router.push('/planning')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur')
     } finally {

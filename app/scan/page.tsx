@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
+import BottomNav from '@/components/BottomNav'
 import Scanner from '@/components/Scanner'
 import ContactForm from '@/components/ContactForm'
 import Toast from '@/components/ui/Toast'
@@ -107,19 +108,9 @@ export default function ScanPage() {
           </button>
         </div>
 
-        {/* Lien vers contacts */}
-        <button
-          onClick={() => router.push('/contacts')}
-          className="mt-6 flex items-center gap-2 text-secondary text-sm hover:text-primary transition-colors min-h-[48px] px-4"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-          </svg>
-          Voir mes contacts
-        </button>
       </div>
+
+      <BottomNav prenom={user?.prenom} nom={user?.nom} role={user?.role} />
     </div>
   )
 }

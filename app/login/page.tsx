@@ -42,7 +42,7 @@ export default function LoginPage() {
         router.push('/onboarding/axonaut-key')
       } else {
         localStorage.removeItem('must_change_password')
-        router.push('/scan')
+        router.push('/planning')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur de connexion')
