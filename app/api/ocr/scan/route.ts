@@ -20,11 +20,7 @@ export const POST = withAuth(async (req: NextRequest, user) => {
     const buffer = Buffer.from(bytes)
     const mimeType = file.type || 'image/jpeg'
 
-    // Upload to MinIO first (unique filename)
-    const fileName = `cards/${Date.now()}-${randomUUID()}.jpg`
-    const imageUrl = await uploadImage(buffer, fileName, mimeType)
-
-    // Get org's OpenAI key or fallback to env
+    // Récupérer la clé API OpenAI de l'org
     const { db } = await connectToDatabase()
     const org = await db.collection('organizations').findOne({ _id: new ObjectId(user.orgId) })
     let apiKey: string | undefined
@@ -38,8 +34,13 @@ export const POST = withAuth(async (req: NextRequest, user) => {
 
     const openai = getOpenAIClient(apiKey)
     const base64 = buffer.toString('base64')
+    const fileName = `cards/${Date.now()}-${randomUUID()}.jpg`
 
-    const result = await extractCardData(openai, base64, mimeType)
+    // Upload MinIO + appel OpenAI en parallèle — ils sont indépendants
+    const [imageUrl, result] = await Promise.all([
+      uploadImage(buffer, fileName, mimeType),
+      extractCardData(openai, base64, mimeType),
+    ])
 
     return NextResponse.json({
       contacts: result.contacts,

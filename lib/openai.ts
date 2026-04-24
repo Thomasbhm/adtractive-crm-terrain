@@ -29,6 +29,7 @@ export async function extractCardData(
             type: 'image_url',
             image_url: {
               url: `data:${mimeType};base64,${imageBase64}`,
+              detail: 'low', // mode rapide — largement suffisant pour lire du texte sur une carte
             },
           },
           {
@@ -63,7 +64,7 @@ Règles :
         ],
       },
     ],
-    max_tokens: 1000,
+    max_tokens: 400, // une carte de visite ne dépasse jamais 300 tokens — on réduit pour aller plus vite
   })
 
   const content = response.choices[0]?.message?.content || ''
